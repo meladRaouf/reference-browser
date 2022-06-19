@@ -191,6 +191,32 @@
         <meta-data
             android:name="firebase_analytics_collection_enabled"
             android:value="false" />
+
+        <!--     Remove FirebaseInitProvider and  SentryPerformanceProvider       -->
+        <provider
+            android:name="com.google.firebase.provider.FirebaseInitProvider"
+            android:authorities="${applicationId}.firebase"
+            android:exported="false"
+
+            tools:node="remove" />
+        <provider
+            android:name="io.sentry.android.core.SentryPerformanceProvider"
+            android:authorities="${applicationId}.SentryPerformanceProvider"
+            android:exported="false"
+            tools:node="remove" />
+       <!--Add androidx startup provider to init  SentryPerformance and firebase -->
+        <provider
+            android:name="androidx.startup.InitializationProvider"
+            android:authorities="${applicationId}.androidx-startup"
+            android:exported="false"
+            tools:node="merge">
+            <meta-data
+                android:name="org.mozilla.reference.browser.initializers.FirebaseInitializer"
+                android:value="androidx.startup" />
+            <meta-data
+                android:name="org.mozilla.reference.browser.initializers.SentryPerformanceInitializer"
+                android:value="androidx.startup" />
+        </provider>
     </application>
 
 </manifest>
