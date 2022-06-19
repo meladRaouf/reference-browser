@@ -216,6 +216,15 @@
             <meta-data
                 android:name="org.mozilla.reference.browser.initializers.SentryPerformanceInitializer"
                 android:value="androidx.startup" />
+            <!--
+             Remove workmanger initializer  to be initialized when needed
+            see https://developer.android.com/topic/libraries/architecture/workmanager/advanced/custom-configuration#on-demand
+            -->
+            <meta-data
+                android:name="androidx.work.WorkManagerInitializer"
+                android:value="androidx.startup"
+                tools:node="remove" />
+
         </provider>
     </application>
 
