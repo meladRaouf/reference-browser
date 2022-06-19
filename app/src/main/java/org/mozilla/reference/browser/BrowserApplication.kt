@@ -49,10 +49,38 @@ open class BrowserApplication : Application() {
 
         restoreBrowserState()
 
+        setupGlobalAddonDependencyProvider()
+
+        setupWebExtensions()
+
+        setupPush()
+    }
+
+    private fun setupGlobalAddonDependencyProvider() {
         GlobalAddonDependencyProvider.initialize(
             components.core.addonManager,
             components.core.addonUpdater
         )
+    }
+
+    private fun setupPush() {
+        components.push.feature?.let {
+            Logger.info("AutoPushFeature is configured, initializing it...")
+
+            PushProcessor.install(it)
+
+            // WebPush integration to observe and deliver push messages to engine.
+            WebPushEngineIntegration(components.core.engine, it).start()
+
+            // Perform a one-time initialization of the account manager if a message is received.
+            PushFxaIntegration(it, lazy { components.backgroundServices.accountManager }).launch()
+
+            // Initialize the push feature and service.
+            it.initialize()
+        }
+    }
+
+    private fun setupWebExtensions() {
         WebExtensionSupport.initialize(
             runtime = components.core.engine,
             store = components.core.store,
@@ -85,21 +113,6 @@ open class BrowserApplication : Application() {
             },
             onUpdatePermissionRequest = components.core.addonUpdater::onUpdatePermissionRequest
         )
-
-        components.push.feature?.let {
-            Logger.info("AutoPushFeature is configured, initializing it...")
-
-            PushProcessor.install(it)
-
-            // WebPush integration to observe and deliver push messages to engine.
-            WebPushEngineIntegration(components.core.engine, it).start()
-
-            // Perform a one-time initialization of the account manager if a message is received.
-            PushFxaIntegration(it, lazy { components.backgroundServices.accountManager }).launch()
-
-            // Initialize the push feature and service.
-            it.initialize()
-        }
     }
 
     override fun onTrimMemory(level: Int) {
