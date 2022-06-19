@@ -21,6 +21,7 @@ import mozilla.components.support.ktx.android.content.runOnlyInMainProcess
 import mozilla.components.support.rusthttp.RustHttpConfig
 import mozilla.components.support.rustlog.RustLog
 import mozilla.components.support.webextensions.WebExtensionSupport
+import org.mozilla.reference.browser.ext.inBackground
 import org.mozilla.reference.browser.ext.isCrashReportActive
 import org.mozilla.reference.browser.push.PushFxaIntegration
 import org.mozilla.reference.browser.push.WebPushEngineIntegration
@@ -31,11 +32,11 @@ open class BrowserApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
-
-        setupCrashReporting(this)
-
-        RustHttpConfig.setClient(lazy { components.core.client })
-        setupLogging()
+        inBackground {// setting up dependencies in the background to avoid blocking the main thread
+            setupCrashReporting(this)
+            setupRustHttpConfig()
+            setupLogging()
+        }
 
         if (!isMainProcess()) {
             // If this is not the main process then do not continue with the initialization here. Everything that
@@ -45,6 +46,7 @@ open class BrowserApplication : Application() {
             return
         }
 
+        //Todo check how we can warmup the engine in background thread.
         components.core.engine.warmUp()
 
         restoreBrowserState()
@@ -56,11 +58,16 @@ open class BrowserApplication : Application() {
         setupPush()
     }
 
-    private fun setupGlobalAddonDependencyProvider() {
+    private fun setupRustHttpConfig() {
+                RustHttpConfig.setClient(lazy { components.core.client })
+      }
+
+    private fun setupGlobalAddonDependencyProvider() = inBackground {
         GlobalAddonDependencyProvider.initialize(
             components.core.addonManager,
             components.core.addonUpdater
         )
+
     }
 
     private fun setupPush() {
@@ -68,16 +75,21 @@ open class BrowserApplication : Application() {
             Logger.info("AutoPushFeature is configured, initializing it...")
 
             PushProcessor.install(it)
-
             // WebPush integration to observe and deliver push messages to engine.
             WebPushEngineIntegration(components.core.engine, it).start()
 
-            // Perform a one-time initialization of the account manager if a message is received.
-            PushFxaIntegration(it, lazy { components.backgroundServices.accountManager }).launch()
+            inBackground {
 
-            // Initialize the push feature and service.
-            it.initialize()
+                // Perform a one-time initialization of the account manager if a message is received.
+                PushFxaIntegration(
+                    it,
+                    lazy { components.backgroundServices.accountManager }).launch()
+
+                // Initialize the push feature and service.
+                it.initialize()
+            }
         }
+
     }
 
     private fun setupWebExtensions() {
